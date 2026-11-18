@@ -141,7 +141,7 @@ main{min-width:0}
   font-weight:500;box-shadow:0 6px 20px #0004;max-width:calc(100vw - 32px);text-align:center}
 
 /* viewer */
-.view{position:fixed;inset:0;z-index:50;background:#06070bf0;display:grid;grid-template-rows:auto minmax(0,1fr);color:#eceef3;
+.view{position:fixed;inset:0;z-index:50;background:#06070bf0;display:grid;grid-template-rows:auto auto minmax(0,1fr);color:#eceef3;
   padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left))}
 .vbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:12px}
 .vbar .nm{font:500 15px var(--f-code)}
@@ -154,6 +154,18 @@ main{min-width:0}
 .vbar button{border:1px solid #ffffff33;background:#ffffff10;color:#eceef3;border-radius:8px;padding:7px 12px;cursor:pointer}
 .vbar button:hover{background:#ffffff22}
 .vbar button.on{background:#e2b45c;border-color:#e2b45c;color:#1b1407}
+.dye{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-bottom:12px;min-height:40px}
+.dye .lb{font:600 10.5px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:#9aa1b2;margin-right:2px}
+.dye .sep{width:1px;align-self:stretch;background:#ffffff26;margin:2px 4px}
+.dye .sw{width:26px;height:26px;border-color:#ffffff45}
+.dye .sw[aria-pressed="true"]{box-shadow:0 0 0 2px #06070b,0 0 0 4px #e2b45c}
+.dye .rg{display:inline-flex;align-items:center;gap:6px;border:1px solid #ffffff33;background:#ffffff10;color:#eceef3;border-radius:999px;padding:4px 11px 4px 5px;cursor:pointer;font-size:12.5px}
+.dye .rg i{width:16px;height:16px;border-radius:50%;background:var(--c);border:1px solid #ffffff55}
+.dye .rg[aria-pressed="true"]{border-color:#e2b45c;background:#e2b45c26}
+.dye input[type=color]{width:32px;height:28px;border:1px solid #ffffff45;border-radius:6px;background:none;padding:1px;cursor:pointer}
+.dye .o{border:1px solid #ffffff33;background:#ffffff10;color:#eceef3;border-radius:8px;padding:6px 11px;cursor:pointer}
+.dye .o:hover{background:#ffffff22}
+.dye .msg{color:#9aa1b2;font-size:12.5px}
 .vimgs{display:flex;gap:14px;justify-content:center;align-items:center;min-height:0}
 .vimgs figure{margin:0;height:100%;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
 .vimgs img{max-height:calc(100% - 22px);max-width:100%;border-radius:8px;background:#7c7f86;object-fit:contain}
@@ -173,6 +185,7 @@ main{min-width:0}
   .size{display:none}
   .dc .t{display:none}
   .vimgs{flex-direction:column}.vimgs figure{height:50%}
+  .dye{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.dye>*{flex:none}
   .nav{top:auto;bottom:calc(14px + env(safe-area-inset-bottom,0px));translate:none}
   .keys{display:none}
 }
@@ -209,6 +222,8 @@ main{min-width:0}
   <div class="vbar"><span class="nm" id="vn"></span><span class="sc" id="vs"></span><span id="vtags" style="display:contents"></span>
     <span class="sp"><span class="keys">← → gez · Boşluk seç · Esc kapat</span>
     <button id="vlink">Linki kopyala</button><button id="vpick">Seç</button><button id="vclose">Kapat</button></span></div>
+  <div class="dye" id="dye"><span class="lb">Renk dene</span><span id="dreg" style="display:contents"></span><span class="sep"></span><span id="dpal" style="display:contents"></span>
+    <input type="color" id="dcol" value="#2f6fd6" title="Özel renk" aria-label="Özel renk"><button class="o" id="dorig">Orijinal</button><span class="msg" id="dmsg"></span></div>
   <div class="vimgs"><figure><img id="vf" alt="Ön"><figcaption>Ön</figcaption></figure><figure><img id="vb" alt="Arka"><figcaption>Arka</figcaption></figure></div>
   <button class="nav l" id="vprev" aria-label="Önceki">‹</button><button class="nav r" id="vnext" aria-label="Sonraki">›</button>
 </div>
@@ -364,7 +379,7 @@ function open(i){if(i<0)return;cur=i;const it=byId.get(vis[i]),m=it.m;
     (m.pm||[]).map(k=>`<span class="vtag p">${PMS[k].t} modelinde var${PMS[k].url?` · <a href="${PMS[k].url}" target="_blank" rel="noopener">indir</a>`:""}</span>`).join("")+
     (m.nw?`<span class="vtag">Yeni</span>`:"");
   history.replaceState(null,"",pageUrl()+"#i="+it.id);
-  vpick();$("view").hidden=false;document.body.style.overflow="hidden"}
+  vpick();$("view").hidden=false;document.body.style.overflow="hidden";dyeOpen(it)}
 function vpick(){const on=sel.has(vis[cur]);$("vpick").textContent=on?"Seçildi ✓":"Seç";$("vpick").classList.toggle("on",on)}
 function close(){$("view").hidden=true;cur=-1;document.body.style.overflow="";
   history.replaceState(null,"",st.shared?pageUrl()+"#l="+[...st.shared].join("."):pageUrl())}
@@ -376,6 +391,111 @@ $("view").onclick=e=>{if(e.target===$("view")||e.target.classList.contains("vimg
 document.addEventListener("keydown",e=>{if(cur<0)return;
   if(e.key==="Escape")close();else if(e.key==="ArrowLeft")step(-1);else if(e.key==="ArrowRight")step(1);
   else if(e.key===" "||e.key.toLowerCase()==="s"){setSel(vis[cur],!sel.has(vis[cur]));e.preventDefault()}});
+
+// colour try-on: one colour region of the front/back renders is recoloured in the browser.
+// Light and shade are kept: new = target colour x (pixel luminance / region median luminance)^0.8, in linear light;
+// background (render grey) and skin-like pixels are left alone.
+const DYE=[["#18181c","Siyah"],["#f0efe9","Beyaz"],["#8d9099","Gri"],["#b8322a","Kırmızı"],["#6e1a28","Bordo"],["#e07b24","Turuncu"],
+  ["#d1a826","Altın"],["#2f8a55","Yeşil"],["#1d5a46","Zümrüt"],["#2f6fd6","Mavi"],["#1c2c66","Lacivert"],["#8a46b0","Mor"],["#e06aa3","Pembe"],["#6e4529","Kahve"]];
+const LUT=new Float32Array(256);for(let i=0;i<256;i++){const c=i/255;LUT[i]=c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4)}
+const ENC=new Uint8Array(4097);for(let i=0;i<=4096;i++){const x=i/4096;ENC[i]=Math.round(255*(x<=0.0031308?x*12.92:1.055*Math.pow(x,1/2.4)-0.055))}
+const hexLin=h=>[1,3,5].map(k=>LUT[parseInt(h.substr(k,2),16)]);
+let dye=null,dyeTok=0,dyeUrls=[];
+$("dpal").innerHTML=DYE.map(([c,t])=>`<button class="sw" data-c="${c}" style="--c:${c}" title="${t}" aria-label="${t}" aria-pressed="false"></button>`).join("");
+function loadPx(src){return new Promise((res,rej)=>{const im=new Image();im.decoding="async";
+  im.onload=()=>{try{const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;
+    const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(im,0,0);res({c,x,d:x.getImageData(0,0,c.width,c.height)})}catch(e){rej(e)}};
+  im.onerror=rej;im.src=src})}
+// per pixel: class (255 background, 254 skin, 12 neutral, 0-11 hue bin of 30 deg), hue, saturation, linear luminance
+function prep(side,bg){
+  const p=side.d.data,n=p.length>>2,cls=new Uint8Array(n),hue=new Float32Array(n),sat=new Float32Array(n),Y=new Float32Array(n);
+  for(let i=0;i<n;i++){const R=p[4*i],G=p[4*i+1],B=p[4*i+2],r=R/255,g=G/255,b=B/255;
+    Y[i]=0.2126*LUT[R]+0.7152*LUT[G]+0.0722*LUT[B];
+    if(Math.max(Math.abs(r-bg[0]),Math.abs(g-bg[1]),Math.abs(b-bg[2]))<0.055){cls[i]=255;continue}
+    const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;
+    if(d>1e-6){h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h*=60;if(h<0)h+=360}
+    const s=mx>0?d/mx:0;hue[i]=h;sat[i]=s;
+    if(h>5&&h<38&&s>0.15&&s<0.58&&mx>0.42){cls[i]=254;continue}
+    cls[i]=(s<0.16||mx<0.16)?12:Math.floor(((h+15)%360)/30)}
+  Object.assign(side,{cls,hue,sat,Y,n});
+}
+const hd=(a,b)=>{const d=Math.abs(a-b)%360;return d>180?360-d:d};
+function wOf(side,rg,i){const c=side.cls[i];if(c>=254)return 0;
+  if(rg.neutral)return c===12?1:0;
+  const s=side.sat[i];if(s<0.08)return 0;
+  // metal trims: much brighter than the cloth around them, kept as they are
+  const r=side.Y[i]/rg.Ym,gl=r>2.6?Math.max(0,1-(r-2.6)/1.6):1;
+  return Math.min(1,Math.max(0,(34-hd(side.hue[i],rg.hc))/14))*Math.min(1,(s-0.08)/0.1)*gl}
+// up to three regions, largest first: the neutral (black/grey/white) part and hue clusters
+function regions(f){
+  const cnt=new Float32Array(13);let tot=0;for(let i=0;i<f.n;i+=2){const c=f.cls[i];if(c<254){cnt[c]++;tot++}}
+  if(!tot)return [];
+  const out=[],p=f.d.data;
+  [...cnt.keys()].sort((a,b)=>cnt[b]-cnt[a]).forEach(k=>{if(cnt[k]/tot<0.08||out.length>=3)return;
+    let rg;
+    if(k===12)rg={neutral:true};
+    else{let sx=0,sy=0;for(let i=0;i<f.n;i+=2){const c=f.cls[i];if(c<12&&hd(c*30,k*30)<=30){const a=f.hue[i]*Math.PI/180;sx+=Math.cos(a);sy+=Math.sin(a)}}
+      rg={neutral:false,hc:(Math.atan2(sy,sx)*180/Math.PI+360)%360};
+      if(out.some(o=>!o.neutral&&hd(o.hc,rg.hc)<40))return}
+    const rgb=[0,0,0];let m=0,sy=0,sw=0;rg.Ym=1;
+    // reference brightness = weighted mean over every pixel the dye touches (lit, half-saturated cloth included)
+    for(let i=0;i<f.n;i+=3){const w=f.cls[i]<254&&(rg.neutral?f.cls[i]===12:f.sat[i]>=0.08&&hd(f.hue[i],rg.hc)<34);if(!w)continue;
+      const ww=rg.neutral?1:Math.min(1,Math.max(0,(34-hd(f.hue[i],rg.hc))/14))*Math.min(1,(f.sat[i]-0.08)/0.1);
+      sy+=ww*f.Y[i];sw+=ww;if(ww>0.6){rgb[0]+=p[4*i];rgb[1]+=p[4*i+1];rgb[2]+=p[4*i+2];m++}}
+    if(m<200)return;
+    rg.Ym=Math.max(sy/sw,0.004);
+    rg.rep=`rgb(${rgb.map(v=>Math.round(v/m)).join(",")})`;out.push(rg)});
+  return out;
+}
+function paint(side,rg,T0){
+  // target scaled to the geometric mean of its own and the region's brightness: a dark coat dyed white stays cloth, not a lamp
+  const lt=Math.max(0.2126*T0[0]+0.7152*T0[1]+0.0722*T0[2],1e-4),L=Math.pow(lt,0.4)*Math.pow(rg.Ym,0.6),T=T0.map(v=>v/lt*L);
+  const p=side.d.data,o=new ImageData(new Uint8ClampedArray(p),side.d.width,side.d.height),q=o.data;
+  for(let i=0;i<side.n;i++){const w=wOf(side,rg,i);if(!w)continue;
+    const r=side.Y[i]/rg.Ym,k=Math.pow(r,r>1?0.5:0.9),f=r>1?Math.min(0.6,0.15*(r-1)):0;
+    // highlights lose some colour (sheen, not glow)
+    const o0=T[0]*k,o1=T[1]*k,o2=T[2]*k,y=(0.2126*o0+0.7152*o1+0.0722*o2)*f,o=[o0*(1-f)+y,o1*(1-f)+y,o2*(1-f)+y];
+    for(let c=0;c<3;c++){const a=LUT[p[4*i+c]],v=a+(Math.min(1,o[c])-a)*w;q[4*i+c]=ENC[Math.round(Math.min(1,v)*4096)]}}
+  side.x.putImageData(o,0,0);
+  return side.c.toDataURL("image/webp",0.95);
+}
+function dyeUi(){
+  $("dreg").innerHTML=dye&&dye.regs?dye.regs.map((r,k)=>`<button class="rg" data-r="${k}" aria-pressed="${dye.r===k}" title="Boyanacak bölge"><i style="--c:${r.rep}"></i>${k?k+1+". renk":"Ana renk"}</button>`).join(""):"";
+  $("dpal").querySelectorAll(".sw").forEach(b=>b.setAttribute("aria-pressed",!!dye&&b.dataset.c===dye.col));
+}
+function dyeOpen(it){
+  dyeTok++;dyeUrls.forEach(u=>URL.revokeObjectURL(u));dyeUrls=[];
+  dye={it,regs:null,r:0,col:null};dyeUi();$("dmsg").textContent="";
+}
+async function dyeReady(){
+  if(dye.regs)return dye.regs.length>0;
+  const tok=dyeTok,it=dye.it;$("dmsg").textContent="Hazırlanıyor…";
+  try{
+    const [f,b]=await Promise.all([loadPx(img(it,"f",1)),loadPx(img(it,"b",1))]);
+    if(tok!==dyeTok)return false;
+    const p=f.d.data,W=f.d.width,H=f.d.height,bg=[0,0,0];let m=0;
+    for(const[x0,y0]of[[0,0],[W-12,0],[0,H-12],[W-12,H-12]])for(let y=y0;y<y0+12;y++)for(let x=x0;x<x0+12;x++){const i=4*(y*W+x);bg[0]+=p[i];bg[1]+=p[i+1];bg[2]+=p[i+2];m++}
+    for(let k=0;k<3;k++)bg[k]=bg[k]/m/255;
+    prep(f,bg);prep(b,bg);
+    Object.assign(dye,{f,b,regs:regions(f)});
+    $("dmsg").textContent=dye.regs.length?"":"Bu parçada boyanacak bölge bulunamadı";
+    dyeUi();return dye.regs.length>0;
+  }catch(e){if(tok===dyeTok)$("dmsg").textContent="Renk deneme sadece sitede çalışıyor";return false}
+}
+async function dyeApply(col){
+  if(!dye||!(await dyeReady()))return;
+  dye.col=col;dyeUi();const tok=dyeTok,rg=dye.regs[dye.r],T=hexLin(col);
+  const [uf,ub]=await Promise.all([paint(dye.f,rg,T),paint(dye.b,rg,T)]);
+  if(tok!==dyeTok||dye.col!==col){URL.revokeObjectURL(uf);URL.revokeObjectURL(ub);return}
+  dyeUrls.forEach(u=>URL.revokeObjectURL(u));dyeUrls=[uf,ub];$("vf").src=uf;$("vb").src=ub;
+}
+function dyeReset(){if(!dye)return;dyeUrls.forEach(u=>URL.revokeObjectURL(u));dyeUrls=[];dye.col=null;
+  $("vf").src=img(dye.it,"f",1);$("vb").src=img(dye.it,"b",1);dyeUi()}
+$("dpal").onclick=e=>{const b=e.target.closest(".sw");if(b)dyeApply(b.dataset.c)};
+let dct=0;$("dcol").oninput=e=>{clearTimeout(dct);const v=e.target.value;dct=setTimeout(()=>dyeApply(v),60)};
+$("dorig").onclick=dyeReset;
+$("dreg").onclick=e=>{const b=e.target.closest(".rg");if(!b)return;dye.r=+b.dataset.r;
+  const c=dye.col;if(c)dyeApply(c);else dyeUi()};
 
 // search / sex
 let qt=0;$("q").oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{st.q=e.target.value;render()},120)};
