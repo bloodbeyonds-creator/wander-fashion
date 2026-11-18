@@ -466,9 +466,21 @@ function memb(side,rg,i){const s=side.sat[i],v=side.val[i];
   if(rg.k==="dark")return neu*clamp01((0.52-v)/0.18);
   if(rg.k==="light")return neu*clamp01((v-0.34)/0.18);
   return (1-neu)*clamp01((36-hd(side.hue[i],rg.hc))/16)}
+// pixel luminance only (items with material masks need nothing else)
+function prepY(side){const p=side.d.data,W=side.d.width,H=side.d.height,n=W*H,Y=new Float32Array(n);
+  for(let i=0;i<n;i++)Y[i]=0.2126*LUT[p[4*i]]+0.7152*LUT[p[4*i+1]]+0.0722*LUT[p[4*i+2]];
+  Object.assign(side,{Y,n,W,H})}
 function wmap(side,rg){
   const key="w_"+rg.id;if(side[key])return side[key];
-  const w=new Float32Array(side.n);for(let i=0;i<side.n;i++)w[i]=side.fg[i]>0?memb(side,rg,i):0;
+  const w=new Float32Array(side.n);
+  if(rg.k==="m"){
+    // exact region from the material mask (0 backdrop, 255 skin, 1..N regions); 1 px soft edge between regions
+    const L=side.lbl;for(let i=0;i<side.n;i++)w[i]=L[i]===rg.lab?1:0;
+    blur(w,side.W,side.H,1);
+    for(let i=0;i<side.n;i++){if(L[i]===0||L[i]===255)w[i]=0;else if(L[i]===rg.lab)w[i]=Math.max(w[i],0.6);
+      const r=side.Y[i]/rg.Ym;if(r>2.6)w[i]*=Math.max(0,1-(r-2.6)/1.6)}
+    return side[key]=w}
+  for(let i=0;i<side.n;i++)w[i]=side.fg[i]>0?memb(side,rg,i):0;
   blur(w,side.W,side.H,2);
   for(let i=0;i<side.n;i++){w[i]*=side.fg[i];
     // metal trims: much brighter than the cloth around them, kept as they are
@@ -516,6 +528,15 @@ async function dyeReady(){
   if(dye.regs)return dye.regs.length>0;
   const tok=dyeTok,it=dye.it;$("dmsg").textContent="Hazırlanıyor…";
   try{
+    // material masks rendered with the previews (m/<id>.json + label PNGs); image analysis when there are none
+    let mj=null;if(SITE){try{const r=await fetch(`m/${it.id}.json`);if(r.ok)mj=await r.json()}catch(e){}}
+    if(mj&&mj.r&&mj.r.length){
+      const [f,b,lf,lb]=await Promise.all([loadPx(img(it,"f",1)),loadPx(img(it,"b",1)),loadPx(`m/${it.id}_f.png`),loadPx(`m/${it.id}_b.png`)]);
+      if(tok!==dyeTok)return false;
+      for(const[s,l]of[[f,lf],[b,lb]]){prepY(s);const q=l.d.data,L=new Uint8Array(s.n);for(let i=0;i<s.n;i++)L[i]=q[4*i];s.lbl=L}
+      Object.assign(dye,{f,b,regs:mj.r.map((r,k)=>({k:"m",id:"m"+k,lab:k+1,Ym:Math.max(r.y,0.004),rep:r.c}))});
+      $("dmsg").textContent="";dyeUi();return true;
+    }
     const [f,b]=await Promise.all([loadPx(img(it,"f",1)),loadPx(img(it,"b",1))]);
     if(tok!==dyeTok)return false;
     const p=f.d.data,W=f.d.width,H=f.d.height,bg=[0,0,0];let m=0;
